@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Type-C Canavarı: Final Port Edition</title>
+<style>
+  body{background:#111;color:#fff;text-align:center;font-family:monospace;}
+  #menu{margin-top:10px;}
+  select,button{background:#222;color:#fff;border:1px solid #555;padding:5px;margin:5px;}
+  #game{display:grid;grid-template-columns:repeat(8,50px);grid-template-rows:repeat(8,50px);
+        gap:3px;justify-content:center;margin-top:15px;}
+  .cell{width:50px;height:50px;background:#333;border-radius:6px;}
+  .player{background:lime;}
+  .monster{background:crimson;}
+  .hole{background:black;}
+  .frozen{background:skyblue;}
+</style>
+</head>
+<body>
+<h1>🧛‍♂️ Type-C Canavarı: Final Port Edition 🧟‍♀️</h1>
+
+<div id="menu">
+  <label>Oyuncu sayısı: 
+    <select id="playerCount"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+  </label>
+  <label>Canavar sayısı: 
+    <select id="monsterCount"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+  </label>
+  <label>Tema:
+    <select id="theme">
+      <option value="classic">Klasik</option>
+      <option value="magic">Büyülü</option>
+      <option value="horror">Korkunç</option>
+    </select>
+  </label>
+  <button id="startBtn">Oyunu Başlat</button>
+</div>
+
+<div id="game"></div>
+<p>WASD: Oyuncu | Yön tuşları: Canavar | Q: Dondur | Boşluk: Kurtul</p>
+
+<script>
+const gridSize=8;
+const game=document.getElementById('game');
+let players=[],monsters=[],holes=[];
+let frozen=false,struggle=0,started=false;
+
+function rand(n){return Math.floor(Math.random()*n);}
+function randPos(){return {x:rand(gridSize),y:rand(gridSize)};}
+
+function makeHoles(){
+  holes=[];
+  for(let i=0;i<8;i++){
+    let p=randPos();
+    if((p.x===0&&p.y===0)||(p.x===7&&p.y===7))continue;
+    holes.push(p);
+  }
+}
+
+function createGrid(){
+  game.innerHTML='';
+  for(let y=0;y<gridSize;y++){
+    for(let x=0;x<gridSize;x++){
+      const c=document.createElement('div');
+      c.classList.add('cell');
+      if(holes.some(h=>h.x===x&&h.y===y)) c.classList.add('hole');
+      if(players.some(p=>p.x===x&&p.y===y&&p.alive)) c.classList.add('player');
+      if(monsters.some(m=>m.x===x&&m.y===y)) c.classList.add('monster');
+      game.appendChild(c);
+    }
+  }
+}
+
+function resetGame(pCount,mCount){
+  players=[];monsters=[];
+  for(let i=0;i<pCount;i++)players.push({x:0,y:i,alive:true});
+  for(let i=0;i<mCount;i++)monsters.push({x:gridSize-1,y:gridSize-1-i});
+  makeHoles();
+  frozen=false;struggle=0;started=true;
+  createGrid();
+}
+
+function move(list,idx,dir){
+  const pos=list[idx];
+  if(list===players && frozen) return;
+  if(dir==='w'&&pos.y>0)pos.y--;
+  if(dir==='s'&&pos.y<gridSize-1)pos.y++;
+  if(dir==='a'&&pos.x>0)pos.x--;
+  if(dir==='d'&&pos.x<gridSize-1)pos.x++;
+}
+
+function checkFalls(){
+  for(const p of [...players,...monsters]){
+    if(holes.some(h=>h.x===p.x&&h.y===p.y)){
+      if(players.includes(p)){
+        alert("Bir oyuncu düştü! Artık Type-C Canavarı!");
+        p.alive=false;
+        monsters.push({x:p.x,y:p.y});
+      } else {
+        alert("Bir canavar düştü! Oyuncular kazandı!");
+        monsters.splice(monsters.indexOf(p),1);
+      }
+      makeHoles();
+    }
+  }
+}
+
+function collision(){
+  for(const m of monsters){
+    for(const p of players){
+      if(!p.alive) continue;
+      if(p.x===m.x&&p.y===m.y){
+        alert("Canavar seni itti! Boşluk tuşuna 10 kere bas!");
+        struggle=0;
+      }
+    }
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(!started) return;
+  let k=e.key.toLowerCase();
+  if(['w','a','s','d'].includes(k)) move(players,0,k);
+  if(['arrowup','arrowleft','arrowdown','arrowright'].includes(k)){
+    const map={'arrowup':'w','arrowleft':'a','arrowdown':'s','arrowright':'d'};
+    move(monsters,0,map[k]);
+  }
+  if(k===' '){
+    struggle++;
+    if(struggle===10){
+      alert("Kurtuldun!");
+      struggle=0;
+    }
+  }
+  if(k==='q'){
+    for(const m of monsters){
+      for(const p of players){
+        if(Math.abs(p.x-m.x)<=1 && Math.abs(p.y-m.y)<=1){
+          frozen=true;createGrid();
+          setTimeout(()=>{frozen=false;createGrid();},2000);
+        }
+      }
+    }
+  }
+  createGrid();collision();checkFalls();
+});
+
+document.getElementById('theme').onchange=e=>{
+  switch(e.target.value){
+    case'classic':document.body.style.background='#111';break;
+    case'magic':document.body.style.background='linear-gradient(45deg,purple,cyan)';break;
+    case'horror':document.body.style.background='linear-gradient(45deg,black,red)';break;
+  }
+};
+
+document.getElementById('startBtn').onclick=()=>{
+  const p=parseInt(document.getElementById('playerCount').value);
+  const m=parseInt(document.getElementById('monsterCount').value);
+  resetGame(p,m);
+};
+createGrid();
+</script>
+</body>
+</html>
